@@ -100,7 +100,7 @@ if __name__ == "__main__":
 ######################################
 ### GRAPH RESULTS                  ###
 ######################################
-    
+
     # create connection instance
     sql = GraphSQL(country,timestamp)
     # connect to database and define cursor
