@@ -1,8 +1,0 @@
-"""
-This file contains snippets that might be valuable in the furter when I try to implement a proxy with my browser.
-"""
-
-# Start proxy that will allow me to circumvene GA
-server = Server('../../share/browsermob-proxy-2.1.4/bin/browsermob-proxy')
-server.start()
-proxy = server.create_proxy()
