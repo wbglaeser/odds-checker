@@ -96,7 +96,8 @@ if __name__ == "__main__":
     firefox.open_url(driver)
 
     # Get the odds
-    firefox.retrieve_teams(driver,db,timestamp)
+    firefox.retrieve_teams(driver, db, timestamp)
+
     # time.sleep(5 * uniform(0,1))
 
 #     # Close the driver
