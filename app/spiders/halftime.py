@@ -72,7 +72,7 @@ class HalftimeBrowser():
             driver.get(url_stem + "france/league-1")
 
         # GET RID OF ADD THAT POPS UP
-        self.remove_popup(driver)
+        self.remove_popup(driver, 0)
 
         # LOG
         logger.info('Starting Page Opened.')
@@ -80,28 +80,27 @@ class HalftimeBrowser():
 
     # RETRIEVE ITEMS
     def retrieve_teams(self, driver, database, timestamp):
-        pass
 
-        # # Retrieve Page Type
-        # button_selector, page_type = self.retrieve_page_type(driver.page_source)
-        #
-        # # Set starting window
-        # start_window = driver.window_handles[0]
-        #
-        # count = 1
-        #
-        # # Loop through Different Games
-        # for game in self.wait_pl(driver, 'tr.match-on '):
-        #
-        #     # Move to Second Page
-        #     self.move_to_game_page(game, driver, button_selector)
-        #
-        #     self.remove_popup(driver)
-        #
-        #     self.move_to_odds_page(driver, page_type)
-        #
-        #     if count == 1:
-        #         break
+        # Retrieve Page Type
+        button_selector, page_type = self.retrieve_page_type(driver.page_source)
+
+        # Set starting window
+        start_window = driver.window_handles[0]
+
+        count = 1
+
+        # Loop through Different Games
+        for game in self.wait_pl_pres(driver, 'tr.match-on '):
+
+            # Move to Second Page
+            self.move_to_game_page(game, driver, button_selector)
+
+            self.remove_popup(driver, 1)
+            #
+            self.move_to_odds_page(driver, page_type)
+
+            if count == 1:
+                break
 
             # # Move to Half Time Odds
             # self.move_to_odds_page(driver, page_type)
@@ -135,7 +134,7 @@ class HalftimeBrowser():
     def move_to_game_page(self, game, driver, button_selector):
         """ This function opens the next page and adjusts the window switch. """
         try:
-            all_odds_button = self.wait(game, button_selector.replace(' ', '.'))
+            all_odds_button = self.wait_pres(game, button_selector.replace(' ', '.'))
             # Move on
             all_odds_button.send_keys(Keys.SHIFT, Keys.ALT, Keys.ENTER)
             logger.info('Moved On to Second Page.')
@@ -151,28 +150,29 @@ class HalftimeBrowser():
     def move_to_odds_page(self, driver, page_type):
         logger.info('Moving on to Odds Page.')
         if page_type == 'NEW':
-            self.wait(driver, 'div.market_lists').click()
-            additional_options = self.wait_pl(driver, 'a.market-item.beta-caption1')
+            self.wait_pres(driver, 'div.market-dd.select-coupon-wrap > div.selected-coupon > div.market-item.selected.beta-caption1').click()
+            additional_options = self.wait_pl_vis(driver, 'div.market-lists > ul.market-list.beta-3col-table > li > a.market-item.beta-caption1')
             for item in additional_options:
                 option = item.get_property('title')
                 print(option)
                 if option == 'Half Time/Full Time':
                     item.click()
                     logger.info('Moved on to Odds Page.')
+                    break
         else:
             logger.info('Not Moving on to Odds Page.')
 
     # Extract team information
     def extract_game_info(self, driver, timestamp):
         #  Messy splitting of team names.
-        teams = self.wait(driver, '//*[@id="betting-odds"]/div/section/div/header/h1').text
+        teams = self.wait_pres(driver, '//*[@id="betting-odds"]/div/section/div/header/h1').text
         home_team = teams.split(' v ')[0].replace(" ", "")
         time.sleep(0.5 * uniform(0, 1))
         container = teams.split(' v ')[1]
         away_team = container.split(' Winner')[0].replace(" ", "")
         time.sleep(0.5 * uniform(0, 1))
         # Messy splitting of date & time
-        datetime = self.wait(driver, '//*[@id="betting-odds"]/div/section/div/div/div/div/span').text
+        datetime = self.wait_pres(driver, '//*[@id="betting-odds"]/div/section/div/div/div/div/span').text
         day = datetime.split(' / ')[0]
         clock = datetime.split(' / ')[1]
         #  Build identifier variable
@@ -195,7 +195,7 @@ class HalftimeBrowser():
             # Quick nap
             time.sleep(0.5 * uniform(0, 1))
             # Only include providers that have odds
-            if self.wait(driver, '//*[@id="t1"]/tr[1]/td[{}]'.format(i)).get_attribute('data-odig') != "0":
+            if self.wait_pres(driver, '//*[@id="t1"]/tr[1]/td[{}]'.format(i)).get_attribute('data-odig') != "0":
                 item = Halftime()
                 item['home_team'] = game_info[0]
                 item['away_team'] = game_info[1]
@@ -235,7 +235,7 @@ class HalftimeBrowser():
     def retrieve_options_index(self, driver):
         code = 0
         options_count = 1
-        for option in self.wait_pl(driver,'//*[@id="table-tabs-row"]/ul/li'):
+        for option in self.wait_pl_pres(driver,'//*[@id="table-tabs-row"]/ul/li'):
             if option.text != "Half Time/Full Time":
                 options_count = options_count + 1
             elif option.text == "Half Time/Full Time":
@@ -254,14 +254,29 @@ class HalftimeBrowser():
         return code
 
     # Wait for element
-    def wait(self, driver, css_selector):
+    def wait_vis(self, driver, css_selector):
+        """ This function returns an element identified by via the given xpath. """
+        return WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+    # Wait for element
+    def wait_click(self, driver, css_selector):
+        """ This function returns an element identified by via the given xpath. """
+        return WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector)))
+
+    # Wait for element
+    def wait_pres(self, driver, css_selector):
         """ This function returns an element identified by via the given xpath. """
         return WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
 
     # wait for handle
-    def wait_pl(self, driver, css_selector):
+    def wait_pl_vis(self, driver, css_selector):
+        """ This function assigns all elements identified by via the given xpath to a list. """
+        return WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, css_selector)))
+
+    # wait for handle
+    def wait_pl_pres(self, driver, css_selector):
         """ This function assigns all elements identified by via the given xpath to a list. """
         return WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, css_selector)))
+
 
     def retrieve_page_type(self, driver_html):
         """ This function checks for the page type and retrieves the button class name."""
@@ -277,13 +292,23 @@ class HalftimeBrowser():
             logger.error('No Button Found.')
         return button_selector, page_type
 
-
-    def remove_popup(self, driver):
-        buttons = self.wait_pl(driver,'div.content-wrapper > span.inside-close-button')
+    def remove_popup(self, driver, button_type):
+        """ This function removes popup adds. """
+        # Identify type of Popup
+        if button_type == 0:
+            buttons = self.wait_pl_pres(driver, 'div.content-wrapper > span.inside-close-button.choose-uk')
+        elif button_type == 1:
+            buttons = self.wait_pl_pres(driver,'div#promo-modal.modal-dialog.active.offers-2 > '
+                                               'div.modal-dialog-inner > div.content-wrapper > '
+                                               'span.inside-close-button')
+            time.sleep(2) # Otherwise the click does not work...
+        # Remove Popup
         for button in buttons:
             try:
                 button.click()
                 logger.info('Popup Add Removed.')
-            except ElementNotInteractableException:
+            except BaseException as ex:
+                logger.error(ex)
                 pass
+        del buttons
 
