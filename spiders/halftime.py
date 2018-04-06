@@ -99,17 +99,11 @@ class HalftimeBrowser():
             #
             self.move_to_odds_page(driver, page_type)
 
-            if count == 1:
-                break
-
-            # # Move to Half Time Odds
-            # self.move_to_odds_page(driver, page_type)
-            #
-            # driver.close()
-            # driver.switch_to_window(start_window)
+            driver.close()
+            driver.switch_to_window(start_window)
 
             #
-            #     # Retrieve Halftime Button if existent
+            # Retrieve Halftime Button if existent
             #     options_count, code = self.retrieve_options_index(driver)
             #     if code == 1:
             #         game_info = self.extract_game_info(driver,timestamp)
@@ -150,8 +144,12 @@ class HalftimeBrowser():
     def move_to_odds_page(self, driver, page_type):
         logger.info('Moving on to Odds Page.')
         if page_type == 'NEW':
-            self.wait_pres(driver, 'div.market-dd.select-coupon-wrap > div.selected-coupon > div.market-item.selected.beta-caption1').click()
-            additional_options = self.wait_pl_vis(driver, 'div.market-lists > ul.market-list.beta-3col-table > li > a.market-item.beta-caption1')
+            self.wait_pres(driver, 'div.market-dd.select-coupon-wrap > '
+                                   'div.selected-coupon > '
+                                   'div.market-item.selected.beta-caption1').click()
+            additional_options = self.wait_pl_vis(driver, 'div.market-lists > '
+                                                          'ul.market-list.beta-3col-table > li >'
+                                                          ' a.market-item.beta-caption1')
             for item in additional_options:
                 option = item.get_property('title')
                 print(option)
@@ -159,6 +157,8 @@ class HalftimeBrowser():
                     item.click()
                     logger.info('Moved on to Odds Page.')
                     break
+        # elif page_type == 'OLD':
+
         else:
             logger.info('Not Moving on to Odds Page.')
 
@@ -197,33 +197,21 @@ class HalftimeBrowser():
             # Only include providers that have odds
             if self.wait_pres(driver, '//*[@id="t1"]/tr[1]/td[{}]'.format(i)).get_attribute('data-odig') != "0":
                 item = Halftime()
-                item['home_team'] = game_info[0]
-                item['away_team'] = game_info[1]
-                item['date'] = game_info[2]
-                item['time'] = game_info[3]
-                item['identifier'] = game_info[4]
-                item['accessed'] = game_info[5]
-                item['provider'] = self.wait(driver,
+                # Assign Game Info to Database Field
+                game_info_features = ['home_team', 'away_team', 'date', 'time','identifier', 'accessed', 'provider']
+                for index, feature_id in enumerate(game_info_features):
+                    if index != 6:
+                        item[feature_id] = game_info[index]
+                    else:
+                        item[feature_id] = self.wait(driver,
                                              '//*[@id="oddsTableContainer"]/table/thead/tr[4]/td[{}]/aside/a'.format(
                                                  i)).get_attribute('title')
-                item['home_home'] = self.wait(driver, '//*[@id="t1"]/tr[1]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['away_away'] = self.wait(driver, '//*[@id="t1"]/tr[2]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['draw_home'] = self.wait(driver, '//*[@id="t1"]/tr[3]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['draw_draw'] = self.wait(driver, '//*[@id="t1"]/tr[4]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['draw_away'] = self.wait(driver, '//*[@id="t1"]/tr[5]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['home_draw'] = self.wait(driver, '//*[@id="t1"]/tr[6]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['away_draw'] = self.wait(driver, '//*[@id="t1"]/tr[7]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['away_home'] = self.wait(driver, '//*[@id="t1"]/tr[8]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
-                item['home_away'] = self.wait(driver, '//*[@id="t1"]/tr[9]/td[{}]'.format(i)).get_attribute(
-                    'data-odig')
+                # Assign Odds to Database Field
+                game_odds_identifier = ['home_home', 'away_away', 'draw_home', 'draw_draw', 'draw_away', 'home_draw',
+                                        'away_draw', 'away_home', 'home_away']
+                for index, odd_id in game_odds_identifier:
+                    item[odd_id] = self.wait(driver, '//*[@id="t1"]/tr[{}]/td[{}]'.format(index+1,i)).get_attribute(
+                        'data-odig')
                 database.process_item(item)
 
 
@@ -234,12 +222,10 @@ class HalftimeBrowser():
     # This break function runs through the toolbar to check whether halftime/fulltime odds exists/ and find their index
     def retrieve_options_index(self, driver):
         code = 0
-        options_count = 1
-        for option in self.wait_pl_pres(driver,'//*[@id="table-tabs-row"]/ul/li'):
-            if option.text != "Half Time/Full Time":
-                options_count = options_count + 1
-            elif option.text == "Half Time/Full Time":
+        for index, option in enumerate(self.wait_pl_pres(driver,'//*[@id="table-tabs-row"]/ul/li')):
+            if option.text == "Half Time/Full Time":
                 code = 1
+                options_count = index + 1 # ??
                 break
         return options_count, code
    
@@ -296,7 +282,8 @@ class HalftimeBrowser():
         """ This function removes popup adds. """
         # Identify type of Popup
         if button_type == 0:
-            buttons = self.wait_pl_pres(driver, 'div.content-wrapper > span.inside-close-button.choose-uk')
+            buttons = self.wait_pl_pres(driver, 'div.content-wrapper >'
+                                                ' span.inside-close-button.choose-uk')
         elif button_type == 1:
             buttons = self.wait_pl_pres(driver,'div#promo-modal.modal-dialog.active.offers-2 > '
                                                'div.modal-dialog-inner > div.content-wrapper > '
